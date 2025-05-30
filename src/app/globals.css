@@ -1,0 +1,415 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #8B4513;
+  --primary-dark: #654321;
+  --secondary: #DAA520;
+  --secondary-dark: #B8860B;
+  --accent: #DC143C;
+  --accent-dark: #B22222;
+  --background: #2F1B14;
+  --background-secondary: #1a0f0a;
+  --surface: #3D2817;
+  --surface-light: #4A321F;
+  --text-primary: #F5DEB3;
+  --text-secondary: #DDD;
+  --text-muted: #AAA;
+  --border: #8B4513;
+  --success: #228B22;
+  --warning: #FF8C00;
+  --error: #DC143C;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  background: linear-gradient(135deg, var(--background) 0%, #1a0f0a 100%);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+.btn-medieval {
+  background: linear-gradient(145deg, var(--primary), var(--primary-dark));
+  border: 2px solid var(--secondary);
+  color: var(--text-primary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 16px 32px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+  /* Ensure minimum touch target size for mobile */
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.btn-medieval:hover {
+  background: linear-gradient(145deg, var(--primary-dark), var(--primary));
+  border-color: var(--secondary-dark);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.btn-medieval-secondary {
+  background: transparent;
+  border: 2px solid var(--secondary);
+  color: var(--secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 16px 32px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
+  /* Ensure minimum touch target size for mobile */
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.btn-medieval-secondary:hover {
+  background: var(--secondary);
+  color: var(--text-primary);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.progress-bar {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  background: linear-gradient(90deg, var(--secondary), var(--secondary-dark));
+  height: 100%;
+  transition: width 0.5s ease;
+  position: relative;
+}
+
+.card-medieval {
+  background: linear-gradient(145deg, var(--surface), var(--surface-light));
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s ease;
+  padding: 24px;
+  margin: 16px 0;
+}
+
+.card-medieval:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5);
+  border-color: var(--secondary);
+}
+
+/* Improved spacing utilities */
+.space-y-6 > * + * {
+  margin-top: 1.5rem;
+}
+
+.space-y-8 > * + * {
+  margin-top: 2rem;
+}
+
+.space-y-12 > * + * {
+  margin-top: 3rem;
+}
+
+.space-y-16 > * + * {
+  margin-top: 4rem;
+}
+
+/* Better text spacing */
+.leading-relaxed {
+  line-height: 1.75;
+}
+
+.leading-loose {
+  line-height: 2;
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+.bounce-in {
+  animation: bounceIn 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Zaryab's Realm Banner Animations */
+@keyframes realmGlow {
+  0%, 100% {
+    text-shadow: 0 0 10px var(--secondary), 0 0 20px var(--secondary), 0 0 30px var(--secondary);
+  }
+  50% {
+    text-shadow: 0 0 15px var(--accent), 0 0 25px var(--accent), 0 0 35px var(--accent);
+  }
+}
+
+@keyframes castleFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.realm-title {
+  animation: realmGlow 3s ease-in-out infinite;
+  display: inline-block !important;
+  text-align: center !important;
+  width: auto !important;
+  overflow: visible;
+  white-space: nowrap;
+  margin: 0 !important;
+}
+
+/* Responsive text handling for realm title */
+@media (max-width: 768px) {
+  .realm-title {
+    white-space: normal;
+    word-break: keep-all;
+    hyphens: none;
+    line-height: 1.2;
+    text-align: center !important;
+    display: inline-block !important;
+    margin: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .realm-title {
+    font-size: 1.5rem !important;
+    line-height: 1.3;
+    text-align: center !important;
+    display: inline-block !important;
+    margin: 0 !important;
+  }
+}
+
+.castle-float {
+  animation: castleFloat 2s ease-in-out infinite;
+}
+
+.castle-float:nth-child(3) {
+  animation-delay: 0.5s;
+}
+
+/* Hide Firebase emulator warning banner */
+.firebase-emulator-warning {
+  display: none !important;
+}
+
+/* Ensure perfect centering for the realm banner */
+.realm-banner-container {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  width: 100% !important;
+}
+
+.realm-title-wrapper {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  text-align: center !important;
+}
+
+/* ===== MOBILE RESPONSIVENESS ENHANCEMENTS ===== */
+
+/* Mobile-first approach with enhanced touch targets */
+@media (max-width: 640px) {
+  /* Enhanced button sizing for mobile */
+  .btn-medieval,
+  .btn-medieval-secondary {
+    padding: 18px 24px;
+    min-height: 48px;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+  }
+
+  /* Better spacing for mobile cards */
+  .card-medieval {
+    padding: 16px;
+    margin: 12px 0;
+    border-radius: 12px;
+  }
+
+  /* Mobile-optimized text sizes */
+  h1 { font-size: 1.75rem; line-height: 1.2; }
+  h2 { font-size: 1.5rem; line-height: 1.3; }
+  h3 { font-size: 1.25rem; line-height: 1.4; }
+
+  /* Better mobile padding */
+  .p-6 { padding: 1rem; }
+  .p-8 { padding: 1.25rem; }
+  .px-6 { padding-left: 1rem; padding-right: 1rem; }
+  .py-6 { padding-top: 1rem; padding-bottom: 1rem; }
+
+  /* Mobile grid improvements */
+  .grid-cols-2 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+  .grid-cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* Mobile navigation improvements */
+  header .flex {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /* Better mobile form layouts */
+  .max-w-2xl { max-width: 100%; }
+  .max-w-3xl { max-width: 100%; }
+  .max-w-4xl { max-width: 100%; }
+  .max-w-5xl { max-width: 100%; }
+}
+
+/* Tablet optimizations */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .btn-medieval,
+  .btn-medieval-secondary {
+    padding: 16px 28px;
+    min-height: 46px;
+  }
+
+  .card-medieval {
+    padding: 20px;
+  }
+
+  /* Tablet grid adjustments */
+  .grid-cols-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Enhanced touch interactions */
+@media (hover: none) and (pointer: coarse) {
+  /* Remove hover effects on touch devices */
+  .btn-medieval:hover,
+  .btn-medieval-secondary:hover,
+  .card-medieval:hover {
+    transform: none;
+  }
+
+  /* Add active states for touch feedback */
+  .btn-medieval:active {
+    transform: scale(0.98);
+    background: linear-gradient(145deg, var(--primary-dark), var(--primary));
+  }
+
+  .btn-medieval-secondary:active {
+    transform: scale(0.98);
+    background: var(--secondary);
+    color: var(--text-primary);
+  }
+
+  .card-medieval:active {
+    transform: scale(0.99);
+  }
+}
+
+/* Improved focus states for accessibility */
+.btn-medieval:focus,
+.btn-medieval-secondary:focus,
+button:focus {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
+}
+
+/* Better mobile scrolling */
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Prevent horizontal scroll on mobile */
+body {
+  overflow-x: hidden;
+}
+
+/* Mobile-optimized language selection buttons */
+@media (max-width: 640px) {
+  .language-button {
+    min-height: 60px;
+    padding: 12px;
+    touch-action: manipulation;
+  }
+
+  .language-button .text-3xl {
+    font-size: 2rem;
+  }
+}
+
+/* Character selection mobile optimization */
+@media (max-width: 640px) {
+  .character-selection-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .character-card {
+    min-height: 120px;
+    padding: 16px;
+  }
+}
