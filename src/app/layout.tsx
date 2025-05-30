@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AudioProvider } from "@/contexts/AudioContext";
 import AudioControls from "@/components/ui/AudioControls";
+import MobileAudioInit from "@/components/ui/MobileAudioInit";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 const geistSans = Geist({
@@ -65,6 +66,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -73,6 +79,7 @@ export default function RootLayout({
             <AudioProvider>
               {children}
               <AudioControls />
+              <MobileAudioInit />
             </AudioProvider>
           </AuthProvider>
         </ErrorBoundary>

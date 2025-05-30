@@ -32,6 +32,7 @@ export function AudioProvider({ children }: AudioProviderProps) {
   const [volume, setVolumeState] = useState(0.3);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [userInteracted, setUserInteracted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Ensure we're on the client side
@@ -46,47 +47,73 @@ export function AudioProvider({ children }: AudioProviderProps) {
     const audio = new Audio('/audio/wizard.mp3');
     audio.loop = true;
     audio.volume = 0.3;
+    audio.preload = 'auto';
+
+    // Mobile-specific settings
+    audio.setAttribute('playsinline', 'true');
+    audio.setAttribute('webkit-playsinline', 'true');
+
     audioRef.current = audio;
 
-    // Try to play immediately
-    const tryPlay = () => {
+    // Handle audio loading
+    const handleCanPlay = () => {
+      setIsLoaded(true);
+      // Try to play immediately (works on desktop)
       audio.play()
         .then(() => {
           setIsPlaying(true);
-          setIsLoaded(true);
+          setUserInteracted(true);
         })
         .catch(() => {
-          setIsLoaded(true);
-
-          // Start on any user interaction
-          const startMusic = () => {
-            audio.play()
-              .then(() => {
-                setIsPlaying(true);
-              })
-              .catch(() => {
-                // Silent fail for production
-              });
-            document.removeEventListener('click', startMusic);
-            document.removeEventListener('touchstart', startMusic);
-            document.removeEventListener('keydown', startMusic);
-          };
-
-          document.addEventListener('click', startMusic);
-          document.addEventListener('touchstart', startMusic);
-          document.addEventListener('keydown', startMusic);
+          // Autoplay blocked - wait for user interaction
+          setIsPlaying(false);
         });
     };
 
-    // Try immediately and also when loaded
-    tryPlay();
-    audio.addEventListener('canplaythrough', tryPlay);
+    // Enhanced user interaction handler for mobile
+    const startMusicOnInteraction = (event: Event) => {
+      if (userInteracted) return; // Already started
+
+      // Prevent multiple triggers
+      setUserInteracted(true);
+
+      audio.play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch(() => {
+          // Still failed, reset for next attempt
+          setUserInteracted(false);
+        });
+
+      // Remove listeners after first successful interaction
+      document.removeEventListener('click', startMusicOnInteraction, { capture: true });
+      document.removeEventListener('touchstart', startMusicOnInteraction, { capture: true });
+      document.removeEventListener('touchend', startMusicOnInteraction, { capture: true });
+      document.removeEventListener('keydown', startMusicOnInteraction, { capture: true });
+      document.removeEventListener('scroll', startMusicOnInteraction, { capture: true });
+    };
+
+    // Add multiple event listeners for better mobile support
+    document.addEventListener('click', startMusicOnInteraction, { capture: true, passive: true });
+    document.addEventListener('touchstart', startMusicOnInteraction, { capture: true, passive: true });
+    document.addEventListener('touchend', startMusicOnInteraction, { capture: true, passive: true });
+    document.addEventListener('keydown', startMusicOnInteraction, { capture: true, passive: true });
+    document.addEventListener('scroll', startMusicOnInteraction, { capture: true, passive: true });
+
+    audio.addEventListener('canplaythrough', handleCanPlay);
+    audio.addEventListener('loadeddata', handleCanPlay);
 
     return () => {
       audio.pause();
       audio.src = '';
+      document.removeEventListener('click', startMusicOnInteraction, { capture: true });
+      document.removeEventListener('touchstart', startMusicOnInteraction, { capture: true });
+      document.removeEventListener('touchend', startMusicOnInteraction, { capture: true });
+      document.removeEventListener('keydown', startMusicOnInteraction, { capture: true });
+      document.removeEventListener('scroll', startMusicOnInteraction, { capture: true });
     };
-  }, [isClient]);
+  }, [isClient, userInteracted]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
@@ -95,12 +122,25 @@ export function AudioProvider({ children }: AudioProviderProps) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
+      // Ensure user interaction is marked for mobile
+      setUserInteracted(true);
+
       audioRef.current.play()
         .then(() => {
           setIsPlaying(true);
         })
         .catch(() => {
-          // Silent fail for production
+          // If play fails, try to reload and play again (mobile fix)
+          audioRef.current?.load();
+          setTimeout(() => {
+            audioRef.current?.play()
+              .then(() => {
+                setIsPlaying(true);
+              })
+              .catch(() => {
+                // Silent fail for production
+              });
+          }, 100);
         });
     }
   };
