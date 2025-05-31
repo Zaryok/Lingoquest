@@ -24,6 +24,7 @@ import {
   monitorNavigationComplete,
   monitorError,
   monitorTimeout,
+  monitorTimeoutTriggered,
   logCompletionReport
 } from '@/utils/lessonCompletionMonitor';
 

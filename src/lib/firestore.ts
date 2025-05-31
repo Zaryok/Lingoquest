@@ -268,21 +268,21 @@ export const completeLessonAndUpdateUser = async (
       setTimeout(() => reject(new Error('Complete lesson operation timeout')), 8000)
     );
 
+    // Get lesson details for XP reward first
+    const lesson = await getLesson(lessonId);
+    if (!lesson) throw new Error('Lesson not found');
+
+    console.log('Found lesson for completion:', lesson.title);
+
+    // Calculate XP with bonuses
+    let xpGained = lesson.xpReward;
+    if (score === 100) {
+      xpGained += 50; // Perfect score bonus
+    }
+
+    console.log('Calculated XP gained:', xpGained);
+
     const operationPromise = async () => {
-      // Get lesson details for XP reward
-      const lesson = await getLesson(lessonId);
-      if (!lesson) throw new Error('Lesson not found');
-
-      console.log('Found lesson for completion:', lesson.title);
-
-      // Calculate XP with bonuses
-      let xpGained = lesson.xpReward;
-      if (score === 100) {
-        xpGained += 50; // Perfect score bonus
-      }
-
-      console.log('Calculated XP gained:', xpGained);
-
       // Update lesson progress (with timeout protection)
       await updateLessonProgress(userId, lessonId, {
         isCompleted: true,
