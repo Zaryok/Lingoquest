@@ -45,6 +45,7 @@ export function StepRenderer({ step, onAnswer, onNext }: StepRendererProps) {
   };
 
   const handleNext = () => {
+    console.log('StepRenderer: Moving to next step');
     // Reset state for next step
     setShowAnswer(false);
     setSelectedOption(null);
@@ -52,7 +53,13 @@ export function StepRenderer({ step, onAnswer, onNext }: StepRendererProps) {
     setShowFeedback(false);
     setIsCorrect(false);
     setShowHint(false);
-    onNext();
+
+    // Call the parent's onNext function
+    try {
+      onNext();
+    } catch (error) {
+      console.error('Error in onNext callback:', error);
+    }
   };
 
   const renderFlashcard = (flashcardStep: FlashcardStep) => (

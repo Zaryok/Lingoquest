@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Lesson, LessonProgress } from '@/types';
-import { sampleLessons } from '@/data/lessons';
+import { getAllLessons } from '@/data/lessons';
 import {
   getLessonProgress,
   createLessonProgress,
@@ -15,9 +15,20 @@ import StepRenderer from '@/components/lesson/StepRenderer';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { PageLoading } from '@/components/ui/LoadingSpinner';
 import { ArrowLeft, Star, Clock } from 'lucide-react';
+import {
+  monitorLessonStart,
+  monitorStepCompletion,
+  monitorProfileUpdate,
+  monitorProfileUpdateComplete,
+  monitorNavigation,
+  monitorNavigationComplete,
+  monitorError,
+  monitorTimeout,
+  logCompletionReport
+} from '@/utils/lessonCompletionMonitor';
 
 export default function LessonPage() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const router = useRouter();
   const params = useParams();
   const lessonId = params.id as string;
@@ -35,9 +46,16 @@ export default function LessonPage() {
     try {
       setLoading(true);
 
-      // Find lesson in sample data
-      const foundLesson = sampleLessons.find(l => l.id === lessonId);
+      // Start monitoring if user is available
+      if (user) {
+        monitorLessonStart(lessonId, user.id);
+      }
+
+      // Find lesson in all lessons data
+      const allLessons = getAllLessons();
+      const foundLesson = allLessons.find(l => l.id === lessonId);
       if (!foundLesson) {
+        monitorError(new Error('Lesson not found'), 'lesson_initialization');
         router.push('/dashboard');
         return;
       }
@@ -106,6 +124,9 @@ export default function LessonPage() {
   const handleStepAnswer = async (isCorrect: boolean) => {
     if (!lesson || !progress || !user) return;
 
+    // Monitor step completion
+    monitorStepCompletion(currentStepIndex, isCorrect);
+
     if (isCorrect) {
       setCorrectAnswers(prev => prev + 1);
     }
@@ -129,8 +150,8 @@ export default function LessonPage() {
     updateLessonProgress(user.id, lessonId, {
       completedSteps: updatedCompletedSteps,
       currentStep: currentStepIndex + 1
-    }).catch(() => {
-      // Silent fail for production
+    }).catch((error) => {
+      monitorError(error, 'step_progress_update');
     });
   };
 
@@ -148,7 +169,21 @@ export default function LessonPage() {
   const completeLesson = async () => {
     if (!lesson || !user || completing) return;
 
+    console.log('Starting lesson completion...', { lessonId, user: user.id });
     setCompleting(true);
+
+    // Monitor timeout setup
+    monitorTimeout('lesson_completion', 5000);
+
+    // Set a maximum timeout for the entire completion process
+    const completionTimeout = setTimeout(() => {
+      console.error('Lesson completion timed out, forcing navigation');
+      monitorTimeoutTriggered('lesson_completion');
+      setCompleting(false);
+      const finalScore = Math.round((correctAnswers / lesson.steps.length) * 100);
+      const xpGained = lesson.xpReward;
+      router.push(`/lesson/${lessonId}/complete?xp=${xpGained}&score=${finalScore}&streak=${user.streak + 1}`);
+    }, 5000); // 5 second timeout
 
     try {
       const timeSpent = Math.floor((Date.now() - startTime) / 1000);
@@ -160,25 +195,93 @@ export default function LessonPage() {
         xpGained += 50; // Perfect score bonus
       }
 
-      // Try to update Firestore in background, but don't wait for it
+      console.log('Calculated completion values:', { finalScore, xpGained, timeSpent });
+
+      // Update user's completed lessons locally first
+      const updatedUser = {
+        ...user,
+        lessonsCompleted: user.lessonsCompleted.includes(lessonId)
+          ? user.lessonsCompleted
+          : [...user.lessonsCompleted, lessonId],
+        xp: user.xp + xpGained,
+        level: Math.floor((user.xp + xpGained) / 100) + 1,
+        streak: user.streak + 1,
+        lastActiveDate: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      console.log('Updating user profile...', { updatedUser });
+
+      // Monitor profile update
+      monitorProfileUpdate('lesson_completion');
+
+      // Update auth context with timeout protection
+      const updateProfilePromise = updateProfile(updatedUser);
+      const updateTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Profile update timeout')), 2000)
+      );
+
+      try {
+        await Promise.race([updateProfilePromise, updateTimeout]);
+        console.log('Profile updated successfully');
+        monitorProfileUpdateComplete('lesson_completion', true);
+      } catch (error) {
+        console.warn('Profile update failed or timed out:', error);
+        monitorProfileUpdateComplete('lesson_completion', false);
+        monitorError(error, 'profile_update');
+        // Continue anyway - we'll navigate to completion page
+      }
+
+      // Clear the completion timeout since we're proceeding
+      clearTimeout(completionTimeout);
+
+      // Try to update Firestore in background (non-blocking)
       completeLessonAndUpdateUser(user.id, lessonId, finalScore, timeSpent)
         .then(() => {
-          // Silent success for production
+          console.log('Background Firestore update completed');
         })
-        .catch(() => {
-          // Silent fail for production
+        .catch((error) => {
+          console.warn('Background Firestore update failed:', error);
         });
 
-      // Show completion modal/page immediately with calculated values
-      router.push(`/lesson/${lessonId}/complete?xp=${xpGained}&score=${finalScore}&streak=${user.streak + 1}`);
-    } catch {
+      console.log('Navigating to completion page...');
+
+      // Navigate immediately - don't wait for anything else
+      const navigationUrl = `/lesson/${lessonId}/complete?xp=${xpGained}&score=${finalScore}&streak=${updatedUser.streak}`;
+      console.log('Navigation URL:', navigationUrl);
+
+      // Monitor navigation
+      monitorNavigation(navigationUrl);
+
+      // Use replace instead of push to prevent back button issues
+      router.replace(navigationUrl);
+
+      // Monitor successful navigation
+      monitorNavigationComplete(navigationUrl);
+
+    } catch (error) {
+      console.error('Error in lesson completion:', error);
+      monitorError(error, 'lesson_completion');
+
+      // Clear timeout on error
+      clearTimeout(completionTimeout);
+
       // Even if there's an error, show completion with basic values
-      // const timeSpent = Math.floor((Date.now() - startTime) / 1000); // Unused in error case
       const finalScore = Math.round((correctAnswers / lesson.steps.length) * 100);
       const xpGained = lesson.xpReward;
-      router.push(`/lesson/${lessonId}/complete?xp=${xpGained}&score=${finalScore}&streak=${user.streak}`);
+
+      console.log('Fallback navigation due to error');
+      const fallbackUrl = `/lesson/${lessonId}/complete?xp=${xpGained}&score=${finalScore}&streak=${user.streak + 1}`;
+      monitorNavigation(fallbackUrl);
+      router.replace(fallbackUrl);
+      monitorNavigationComplete(fallbackUrl);
     } finally {
+      // Always reset completing state
+      console.log('Resetting completing state');
       setCompleting(false);
+
+      // Log completion report in development
+      logCompletionReport();
     }
   };
 
@@ -248,6 +351,20 @@ export default function LessonPage() {
               <p className="text-[var(--text-secondary)]">
                 Calculating your rewards and updating your progress.
               </p>
+              <div className="mt-6">
+                <button
+                  onClick={() => {
+                    console.log('Manual completion override triggered');
+                    setCompleting(false);
+                    const finalScore = Math.round((correctAnswers / lesson.steps.length) * 100);
+                    const xpGained = lesson.xpReward;
+                    router.replace(`/lesson/${lessonId}/complete?xp=${xpGained}&score=${finalScore}&streak=${user.streak + 1}`);
+                  }}
+                  className="text-sm text-[var(--text-secondary)] hover:text-[var(--secondary)] underline"
+                >
+                  Taking too long? Click here to continue
+                </button>
+              </div>
             </div>
           ) : (
             <StepRenderer

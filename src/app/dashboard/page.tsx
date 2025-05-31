@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Lesson, LessonProgress, SUPPORTED_LANGUAGES } from '@/types';
-import { sampleLessons } from '@/data/lessons';
+import { getLessonsByLanguage } from '@/data/lessons';
 import { getUserLessonProgress } from '@/lib/firestore';
 import CharacterAvatar from '@/components/ui/CharacterAvatar';
 import ProgressBar from '@/components/ui/ProgressBar';
@@ -21,8 +21,13 @@ export default function DashboardPage() {
 
   const loadDashboardData = useCallback(async () => {
     try {
-      // Load lessons immediately (no async needed)
-      const lessonsWithLockStatus = sampleLessons.map((lesson, index) => {
+      // Get user's target language, default to Spanish if not set
+      const targetLanguage = user?.targetLanguage || 'es';
+
+      // Load language-specific lessons
+      const languageLessons = getLessonsByLanguage(targetLanguage);
+
+      const lessonsWithLockStatus = languageLessons.map((lesson, index) => {
         // First lesson is always unlocked
         if (index === 0) {
           return { ...lesson, isLocked: false };
@@ -227,9 +232,25 @@ export default function DashboardPage() {
 
         {/* Quest List */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-6">
-            Available Quests
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-[var(--text-primary)]">
+              Available Quests
+            </h2>
+            {targetLanguage && (
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2 text-sm text-[var(--text-secondary)]">
+                  <Globe size={16} />
+                  <span>Learning: {targetLanguage.flag} {targetLanguage.name}</span>
+                </div>
+                <button
+                  onClick={() => router.push('/language-selection')}
+                  className="text-xs text-[var(--text-muted)] hover:text-[var(--secondary)] transition-colors"
+                >
+                  Change Language
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {lessons.map((lesson) => {

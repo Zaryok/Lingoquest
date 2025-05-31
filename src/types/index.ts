@@ -72,6 +72,8 @@ export interface Lesson {
   category: string;
   isLocked: boolean;
   order: number;
+  targetLanguage: string; // Language code this lesson teaches
+  sourceLanguage: string; // Language code for instructions
   createdAt: string;
   updatedAt: string;
 }

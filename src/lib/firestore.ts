@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Lesson, LessonProgress, UserProfile } from '@/types';
+import { getAllLessons as getLocalLessons } from '@/data/lessons';
 
 // User operations
 export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
@@ -121,19 +122,27 @@ export const getAllLessons = async (): Promise<Lesson[]> => {
 
 export const getLesson = async (lessonId: string): Promise<Lesson | null> => {
   try {
-    const lessonDoc = await getDoc(doc(db, 'lessons', lessonId));
-    if (lessonDoc.exists()) {
-      const data = lessonDoc.data();
-      return {
-        id: lessonId,
-        ...data,
-        createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
-        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
-      } as Lesson;
-    }
-    return null;
+    // Use local lesson data for now (faster and more reliable)
+    const localLessons = getLocalLessons();
+    const lesson = localLessons.find(l => l.id === lessonId);
+    return lesson || null;
   } catch (error) {
-    throw error;
+    // Fallback to Firestore if local data fails
+    try {
+      const lessonDoc = await getDoc(doc(db, 'lessons', lessonId));
+      if (lessonDoc.exists()) {
+        const data = lessonDoc.data();
+        return {
+          id: lessonId,
+          ...data,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+        } as Lesson;
+      }
+      return null;
+    } catch {
+      return null;
+    }
   }
 };
 
@@ -251,44 +260,84 @@ export const completeLessonAndUpdateUser = async (
   score: number,
   timeSpent: number
 ) => {
+  console.log('Starting completeLessonAndUpdateUser:', { userId, lessonId, score, timeSpent });
+
   try {
-    // Get lesson details for XP reward
-    const lesson = await getLesson(lessonId);
-    if (!lesson) throw new Error('Lesson not found');
+    // Add overall timeout for the entire operation
+    const operationTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Complete lesson operation timeout')), 8000)
+    );
 
-    // Calculate XP with bonuses
-    let xpGained = lesson.xpReward;
-    if (score === 100) {
-      xpGained += 50; // Perfect score bonus
-    }
+    const operationPromise = async () => {
+      // Get lesson details for XP reward
+      const lesson = await getLesson(lessonId);
+      if (!lesson) throw new Error('Lesson not found');
 
-    // Update lesson progress
-    await updateLessonProgress(userId, lessonId, {
-      isCompleted: true,
-      score,
-      timeSpent,
-      currentStep: lesson.steps.length,
-      completedSteps: lesson.steps.map(step => step.id)
-    });
+      console.log('Found lesson for completion:', lesson.title);
 
-    // Update user XP and level
-    const xpResult = await updateUserXP(userId, xpGained);
-
-    // Update user streak
-    const newStreak = await updateUserStreak(userId);
-
-    // Add lesson to completed lessons
-    const userDoc = await getDoc(doc(db, 'users', userId));
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      const completedLessons = userData.lessonsCompleted || [];
-      if (!completedLessons.includes(lessonId)) {
-        await updateDoc(doc(db, 'users', userId), {
-          lessonsCompleted: [...completedLessons, lessonId],
-          updatedAt: serverTimestamp()
-        });
+      // Calculate XP with bonuses
+      let xpGained = lesson.xpReward;
+      if (score === 100) {
+        xpGained += 50; // Perfect score bonus
       }
+
+      console.log('Calculated XP gained:', xpGained);
+
+      // Update lesson progress (with timeout protection)
+      await updateLessonProgress(userId, lessonId, {
+        isCompleted: true,
+        score,
+        timeSpent,
+        currentStep: lesson.steps.length,
+        completedSteps: lesson.steps.map(step => step.id)
+      });
+
+      console.log('Lesson progress updated successfully');
+    };
+
+    await Promise.race([operationPromise(), operationTimeout]);
+
+    console.log('Starting user updates...');
+
+    // Update user XP and level (with error handling)
+    let xpResult = null;
+    try {
+      xpResult = await updateUserXP(userId, xpGained);
+      console.log('XP update completed:', xpResult);
+    } catch (error) {
+      console.warn('XP update failed:', error);
     }
+
+    // Update user streak (with error handling)
+    let newStreak = 0;
+    try {
+      newStreak = await updateUserStreak(userId);
+      console.log('Streak update completed:', newStreak);
+    } catch (error) {
+      console.warn('Streak update failed:', error);
+    }
+
+    // Add lesson to completed lessons (with error handling)
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const completedLessons = userData.lessonsCompleted || [];
+        if (!completedLessons.includes(lessonId)) {
+          await updateDoc(doc(db, 'users', userId), {
+            lessonsCompleted: [...completedLessons, lessonId],
+            updatedAt: serverTimestamp()
+          });
+          console.log('Completed lessons updated successfully');
+        } else {
+          console.log('Lesson already in completed list');
+        }
+      }
+    } catch (error) {
+      console.warn('Completed lessons update failed:', error);
+    }
+
+    console.log('Lesson completion process finished successfully');
 
     return {
       xpGained,
@@ -297,6 +346,7 @@ export const completeLessonAndUpdateUser = async (
       newStreak
     };
   } catch (error) {
+    console.error('Error in completeLessonAndUpdateUser:', error);
     throw error;
   }
 };

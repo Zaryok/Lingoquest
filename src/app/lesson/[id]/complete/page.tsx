@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { sampleLessons } from '@/data/lessons';
+import { getAllLessons } from '@/data/lessons';
 import { Trophy, Star, Flame, ArrowRight, RotateCcw } from 'lucide-react';
 
 export default function LessonCompletePage() {
@@ -14,7 +14,8 @@ export default function LessonCompletePage() {
   const lessonId = params.id as string;
 
   const [showConfetti, setShowConfetti] = useState(false);
-  const lesson = sampleLessons.find(l => l.id === lessonId);
+  const allLessons = getAllLessons();
+  const lesson = allLessons.find(l => l.id === lessonId);
 
   const xpGained = parseInt(searchParams.get('xp') || '0');
   const score = parseInt(searchParams.get('score') || '0');
@@ -47,10 +48,12 @@ export default function LessonCompletePage() {
   };
 
   const handleContinue = () => {
+    console.log('Navigating back to dashboard');
     router.push('/dashboard');
   };
 
   const handleRetry = () => {
+    console.log('Retrying lesson:', lessonId);
     router.push(`/lesson/${lessonId}`);
   };
 

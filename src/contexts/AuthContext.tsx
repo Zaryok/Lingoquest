@@ -300,34 +300,53 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const updateUserProfile = async (updates: Partial<UserProfile>) => {
-    if (!user) return;
+    if (!user) {
+      console.warn('No user found for profile update');
+      return;
+    }
+
+    console.log('Updating user profile:', { userId: user.id, updates });
+
+    // Always update local state first for immediate UI feedback
+    const updatedUser = { ...user, ...updates, updatedAt: new Date().toISOString() };
+    setUser(updatedUser);
 
     try {
-      // Try to update in Firebase
-      const userRef = doc(db, 'users', user.id);
-      await updateDoc(userRef, {
-        ...updates,
-        updatedAt: serverTimestamp()
-      });
-
-      // Update local state
-      setUser(prev => prev ? { ...prev, ...updates } : null);
-    } catch (error) {
-      // If Firebase fails but we have a demo user, update localStorage
+      // For demo users, only update localStorage
       if (user.id.startsWith('demo-')) {
-        const updatedUser = { ...user, ...updates, updatedAt: new Date().toISOString() };
+        console.log('Updating demo user in localStorage');
         try {
           if (typeof window !== 'undefined') {
             localStorage.setItem('lingoquest-demo-user', JSON.stringify(updatedUser));
           }
-          setUser(updatedUser);
+          console.log('Demo user updated successfully');
         } catch (storageError) {
-          // Handle localStorage errors gracefully
-          setUser(updatedUser);
+          console.warn('localStorage update failed:', storageError);
+          // Continue anyway - local state is already updated
         }
-      } else {
-        throw error;
+        return;
       }
+
+      // For real users, try to update Firebase with timeout
+      console.log('Updating real user in Firebase');
+      const userRef = doc(db, 'users', user.id);
+
+      const updatePromise = updateDoc(userRef, {
+        ...updates,
+        updatedAt: serverTimestamp()
+      });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Firebase update timeout')), 3000)
+      );
+
+      await Promise.race([updatePromise, timeoutPromise]);
+      console.log('Firebase user update completed successfully');
+
+    } catch (error) {
+      console.warn('Firebase user update failed:', error);
+      // Local state is already updated, so this is not critical
+      // The user can continue with the local state
     }
   };
 
